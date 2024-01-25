@@ -1,0 +1,112 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:mvc="http://www.springframework.org/schema/mvc"
+       xmlns:context="http://www.springframework.org/schema/context"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xmlns:task="http://www.springframework.org/schema/task"
+       xmlns:tx="http://www.springframework.org/schema/tx"
+       xsi:schemaLocation="
+            http://www.springframework.org/schema/beans
+            http://www.springframework.org/schema/beans/spring-beans.xsd
+            http://www.springframework.org/schema/context
+            http://www.springframework.org/schema/context/spring-context.xsd
+            http://www.springframework.org/schema/task
+            http://www.springframework.org/schema/task/spring-task.xsd
+            http://www.springframework.org/schema/mvc
+            http://www.springframework.org/schema/mvc/spring-mvc.xsd
+            http://www.springframework.org/schema/tx
+            http://www.springframework.org/schema/tx/spring-tx.xsd">
+<!-- 3.Spring框架启用SpringMVC注解模式 第四步web.xml-->
+    <context:component-scan base-package="com.imooc"/>
+<!-- 真正开启SpringMVC注解 -->
+    <mvc:annotation-driven>
+        <mvc:message-converters>
+<!-- 解决相应里的中文输出 -->
+            <bean class="org.springframework.http.converter.StringHttpMessageConverter">
+                <property name="supportedMediaTypes">
+                    <list>
+                        <value>text/html;charset=utf-8</value>
+                        <!-- 6.JSON(Jackson)序列化输出配置   -->
+                        <value>application/json;charset=utf-8</value>
+                    </list>
+                </property>
+            </bean>
+        </mvc:message-converters>
+    </mvc:annotation-driven>
+<!-- 诸如css/图片/js静态资源排除在外 使得SpringMVC对url处理效率加大   -->
+    <mvc:default-servlet-handler/>
+<!-- 5.配置Freemarker模板引擎 脚本存放地址 第六步见pom.xml mybatis依赖 -->
+    <bean id="freemarkerConfig" class="org.springframework.web.servlet.view.freemarker.FreeMarkerConfigurer">
+        <property name="templateLoaderPath" value="/WEB-INF/ftl"/>
+<!--        对于本身的参数配置  -->
+        <property name="freemarkerSettings">
+            <props>
+<!--        默认的编码类型 UTF-8 freemarker读取指定ftl文件时采用此字符集-->
+                <prop key="defaultEncoding">UTF-8</prop>
+            </props>
+        </property>
+    </bean>
+<!--    使用何种模板引擎 创建的后缀名 -->
+    <bean id="ViewResolver" class="org.springframework.web.servlet.view.freemarker.FreeMarkerViewResolver">
+        <property name="contentType" value="text/html;charset=utf-8"/>
+        <property name="suffix" value=".ftl"/>
+    </bean>
+<!--    7. MyBatis与Spring的整合配置 -->
+      <!--②.配置数据源-->
+    <bean id="dataSource" class="com.alibaba.druid.pool.DruidDataSource">
+        <property name="driverClassName" value="com.mysql.cj.jdbc.Driver"/>
+        <property name="url" value="jdbc:mysql://localhost:3306/imooc_reader?useSSL=false&amp;useUnicode=true&amp;characterEncoding=UTF-8&amp;serverTimezone=Asia/Shanghai&amp;allowPublicKeyRetrieval=true"/>
+        <property name="username" value="root"/>
+        <property name="password" value="root"/>
+        <property name="initialSize" value="5"/>
+        <property name="maxActive" value="20"/>
+    </bean>
+<!--  8. SqlSessionFactoryBean用于根据配置信息创建SqlSessionFactory,不再需要我们自己编码创建 -->
+<!--  19. 原生Mybatis与Spring整合  自动实现接口的增删改查  20增加plus底层的分页查询插件 mybatis-config.xml-->
+<!--  <bean id="sessionFactory" class="org.mybatis.spring.SqlSessionFactoryBean">-->
+    <bean id="sessionFactory" class="com.baomidou.mybatisplus.extension.spring.MybatisSqlSessionFactoryBean">
+        <property name="dataSource" ref="dataSource"/>
+<!--    存储sql语句的mapper.xml文件 存储在哪个目录中 去创建mapper接口-->
+        <property name="mapperLocations" value="classpath:mappers/*.xml"/>
+<!-- 10.  MyBatis配置文件地址 去创建一个xml  第十一步pom加单元测试依赖-->
+        <property name="configLocation" value="classpath:mybatis-config.xml"/>
+    </bean>
+<!--  9. 配置Mapper扫描器  -->
+<bean class="org.mybatis.spring.mapper.MapperScannerConfigurer">
+<!--  这样初始化mybatis时 会对所有mapper接口进行扫描 -->
+    <property name="basePackage" value="com.imooc.reader.mapper"/>
+</bean>
+<!--  18.声明式事务配置 控制事务的打开 提交 回滚 ↓-->
+    <bean id="transactionManager" class="org.springframework.jdbc.datasource.DataSourceTransactionManager">
+        <property name="dataSource" ref="dataSource"/>
+    </bean>
+<!--  与之对应的注解模式！ 再去TestService.java添加  @Transactional -->
+    <tx:annotation-driven transaction-manager="transactionManager"/>
+<!--  61.配置Kaptcha 的bean  62创造KaptchaController.java-->
+    <bean id="KaptchaProducer" class="com.google.code.kaptcha.impl.DefaultKaptcha">
+        <property name="config">
+            <bean class="com.google.code.kaptcha.util.Config">
+                <constructor-arg>
+                    <props>
+                        <!-- 验证码图片不生成边框 -->
+                        <prop key="kaptcha.border">no</prop>
+                        <!-- 验证码图片宽度为120像素  -->
+                        <prop key="kaptcha.image.width">120</prop>
+                        <!-- 验证码图片字体颜色为蓝色  -->
+                        <prop key="kaptcha.textproducer.font.color">blue</prop>
+                        <!-- 每个字符最大占用40像素  -->
+                        <prop key="kaptcha.textproducer.font.size">40</prop>
+                        <!-- 验证码包含4个字符  -->
+                        <prop key="kaptcha.textproducer.char.length">4</prop>
+                    </props>
+                </constructor-arg>
+            </bean>
+        </property>
+    </bean>
+    <!-- 90.开启Spring Task定时任务的注解模式 创建一个reader/task/ComputeTask.java-->
+    <task:annotation-driven/>
+<!--  93.激活文件上传功能 回到MBookController-->
+    <bean id="multipartResolver" class="org.springframework.web.multipart.commons.CommonsMultipartResolver">
+        <property name="defaultEncoding" value="UTF-8"/>
+    </bean>
+</beans>

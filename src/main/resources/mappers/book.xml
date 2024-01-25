@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.imooc.reader.mapper.BookMapper">
+<!--  33.完成底层与数据交互代码 34完成分页处理 是在Service中完成的创建BookService完成分页对象查询-->
+<!--    89.增加平均评分增加信息  增加接口BookMapper -->
+    <update id="updateEvaluation">
+        update book b SET evaluation_score = (
+            select ifnull(avg(score),0) from evaluation where book_id = b.book_id and state='enable'
+        ),evaluation_quantity = (
+            select ifnull(count(*),0) from evaluation where book_id = b.book_id and state='enable'
+        )
+    </update>
+</mapper>
